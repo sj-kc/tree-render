@@ -1,52 +1,53 @@
 <template>
   <div>
-    <div v-for="node in nodes" :key="node.id" class="q-ma-md">
-      <div @click="addNode(node)">{{ node.name }}</div>
-      <div v-if="node?.children?.length">
-        <div
-          v-for="child in node.children"
-          :key="child.id"
-          @click="addNode(child)"
-          class="q-ml-md"
-        >
-          <span class="">{{ child.name }}</span>
-
-          <div v-if="child.children?.length">
-            <div
-              v-for="grandChild in child.children"
-              :key="grandChild.id"
-              @click="addNode(grandChild)"
-              class="q-ml-md"
-            >
-              <span>{{ grandChild.name }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div
+      v-for="item in flattenedNodes"
+      :key="item.id"
+      :style="{
+        marginLeft: item.depth * 20 + 'px',
+      }"
+      @click="addNode(item.node)"
+    >
+      {{ item.node.name }}
     </div>
+
     <q-btn class="q-ma-md" @click="addParent">Add parent</q-btn>
   </div>
 </template>
 
 <script>
-import { defineComponent } from "vue";
+import { ref, computed } from "vue";
 
-export default defineComponent({
+export default {
   name: "IterativePage",
-  data() {
-    return {
-      nodes: [
-        {
-          id: Date.now(),
-          name: `- Parent Node ${Date.now()}`,
-          children: [],
-        },
-      ],
-    };
-  },
+  setup() {
+    const nodes = ref([
+      {
+        id: Date.now(),
+        name: `- Parent Node ${Date.now()}`,
+        children: [],
+      },
+    ]);
 
-  methods: {
-    addNode(parentNode) {
+    const flattenedNodes = computed(() => {
+      const stack = nodes.value.map((node) => ({ node, depth: 1 }));
+      const result = [];
+
+      while (stack.length > 0) {
+        const { node, depth } = stack.shift();
+        result.push({ node, depth });
+
+        if (node.children && node.children.length > 0) {
+          node.children.forEach((child) => {
+            stack.unshift({ node: child, depth: depth + 1 });
+          });
+        }
+      }
+
+      return result;
+    });
+
+    const addNode = (parentNode) => {
       const newNode = {
         id: Date.now(),
         name: `- Node ${Date.now()}`,
@@ -54,16 +55,30 @@ export default defineComponent({
       };
 
       parentNode.children.push(newNode);
-    },
-    addParent() {
+    };
+
+    const addParent = () => {
       const newNode = {
         id: Date.now(),
         name: `- Parent Node ${Date.now()}`,
         children: [],
       };
 
-      this.nodes.push(newNode);
-    },
+      nodes.value.push(newNode);
+    };
+
+    return {
+      nodes,
+      flattenedNodes,
+      addNode,
+      addParent,
+    };
   },
-});
+};
 </script>
+
+<style>
+.q-ml-md {
+  margin-left: 1rem;
+}
+</style>
